@@ -1,69 +1,339 @@
+
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
+import {
+  ArrowDown,
+  Clock,
+  Flame,
+  Star,
+  Dumbbell,
+  Search,
+  SlidersHorizontal,
+  LoaderCircle,
+} from "lucide-react";
+
+type Workout = {
+  id: number | string;
+  name: string;
+  image: string;
+  muscleGroups: string[];
+  equipment: string;
+  difficulty: string;
+  duration: number;
+  caloriesBurned: number;
+  sets: number;
+  reps: string | number;
+  rating: number;
+  description: string;
+  instructions: string[];
+};
+
+const API_URL = "https://api.abcz.workers.dev/api/fitlog";
 
 export default function Home() {
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("duration");
+
+  useEffect(() => {
+    async function fetchWorkouts() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch(API_URL);
+
+        if (!response.ok) {
+          throw new Error("Failed to load workouts");
+        }
+
+        const result = await response.json();
+
+        // Supports API responses that return an array
+        // or an object containing the workouts array.
+        const workoutList = Array.isArray(result)
+          ? result
+          : Array.isArray(result.data)
+          ? result.data
+          : Array.isArray(result.workouts)
+          ? result.workouts
+          : [];
+
+        setWorkouts(workoutList);
+      } catch (err) {
+        console.error("Workout API error:", err);
+        setError("Unable to load workouts. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchWorkouts();
+  }, []);
+
+  const filteredWorkouts = useMemo(() => {
+    const keyword = search.toLowerCase().trim();
+
+    const filtered = workouts.filter((workout) => {
+      const name = workout.name?.toLowerCase() || "";
+      const equipment = workout.equipment?.toLowerCase() || "";
+      const muscles = workout.muscleGroups?.join(" ").toLowerCase() || "";
+
+      return (
+        name.includes(keyword) ||
+        equipment.includes(keyword) ||
+        muscles.includes(keyword)
+      );
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "calories") {
+        return b.caloriesBurned - a.caloriesBurned;
+      }
+
+      if (sortBy === "rating") {
+        return b.rating - a.rating;
+      }
+
+      return a.duration - b.duration;
+    });
+  }, [workouts, search, sortBy]);
+
+  function scrollToLibrary() {
+    document.getElementById("library")?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main className="min-h-screen bg-[#0b0b10] text-white">
+      {/* HERO SECTION */}
+      <section className="mx-auto max-w-7xl px-6 py-12 md:py-20">
+        <div className="grid items-center gap-12 overflow-hidden rounded-3xl border border-white/10 bg-[#15151e] p-8 md:grid-cols-2 md:p-16">
+          <div>
+            <p className="mb-6 text-sm font-black tracking-[0.3em] text-[#ccff00]">
+              WORKOUT LIBRARY
+            </p>
+
+            <h1 className="mb-6 text-5xl font-black leading-[1.05] tracking-tight md:text-7xl lg:text-8xl">
+              TRAIN WITH
+              <br />
+              INTENT.
+              <br />
+              LOG EVERY SET.
+            </h1>
+
+            <p className="mb-10 max-w-2xl text-lg leading-8 text-slate-400">
+              FitLog is a dark, no-nonsense gym companion: pick a lift,
+              lock it into today&apos;s plan, and watch the week&apos;s work
+              add up.
+            </p>
+
+            <button
+              onClick={scrollToLibrary}
+              className="inline-flex items-center gap-3 rounded-xl bg-[#ccff00] px-7 py-5 font-black text-black transition hover:bg-lime-300"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+              <ArrowDown size={20} />
+              BROWSE WORKOUTS
+            </button>
+          </div>
+
+          <div className="relative flex items-center justify-center">
             <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+              src="/asset/banner.png"
+              alt="FitLog workout training"
+              width={800}
+              height={800}
+              priority
+              className="h-auto max-h-[540px] w-full rounded-2xl object-contain"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+
+      {/* WORKOUT LIBRARY */}
+      <section
+        id="library"
+        className="mx-auto max-w-7xl scroll-mt-24 px-6 py-16"
+      >
+        <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div>
+            <p className="mb-3 text-sm font-black tracking-[0.3em] text-[#ccff00]">
+              THE LIBRARY
+            </p>
+
+            <h2 className="text-4xl font-black tracking-tight md:text-6xl">
+              FIND YOUR LIFT.
+            </h2>
+
+            <p className="mt-4 text-lg text-slate-400">
+              Twelve lifts covering every major muscle group.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#15151e] px-4 py-3">
+              <Search size={18} className="text-slate-400" />
+
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search workouts..."
+                className="w-full bg-transparent text-white outline-none placeholder:text-slate-500 sm:w-48"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#15151e] px-4 py-3">
+              <SlidersHorizontal size={18} className="text-[#ccff00]" />
+
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-transparent text-white outline-none"
+              >
+                <option value="duration" className="bg-[#15151e]">
+                  Duration
+                </option>
+                <option value="calories" className="bg-[#15151e]">
+                  Calories
+                </option>
+                <option value="rating" className="bg-[#15151e]">
+                  Rating
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* LOADING */}
+        {loading && (
+          <div className="flex min-h-64 flex-col items-center justify-center gap-4">
+            <LoaderCircle
+              className="animate-spin text-[#ccff00]"
+              size={48}
+            />
+
+            <p className="text-slate-400">Loading workouts...</p>
+          </div>
+        )}
+
+        {/* API ERROR */}
+        {!loading && error && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-8 text-center">
+            <p className="mb-4 text-red-400">{error}</p>
+
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-lg bg-[#ccff00] px-6 py-3 font-bold text-black"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* EMPTY */}
+        {!loading && !error && filteredWorkouts.length === 0 && (
+          <div className="rounded-2xl border border-white/10 bg-[#15151e] p-12 text-center">
+            <Dumbbell
+              className="mx-auto mb-4 text-[#ccff00]"
+              size={48}
+            />
+
+            <h3 className="text-2xl font-black">
+              NO WORKOUTS FOUND
+            </h3>
+
+            <p className="mt-3 text-slate-400">
+              Try searching with another name or muscle group.
+            </p>
+          </div>
+        )}
+
+        {/* WORKOUT CARDS */}
+        {!loading && !error && filteredWorkouts.length > 0 && (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredWorkouts.map((workout) => (
+              <Link
+                key={workout.id}
+                href={`/workout/${workout.id}`}
+                className="group overflow-hidden rounded-2xl border border-white/10 bg-[#15151e] transition duration-300 hover:-translate-y-1 hover:border-[#ccff00]/50"
+              >
+                <div className="relative h-64 overflow-hidden bg-[#20202a]">
+                  <img
+                    src={workout.image}
+                    alt={workout.name}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+
+                  <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                    {(workout.muscleGroups || []).map((muscle) => (
+                      <span
+                        key={muscle}
+                        className="rounded-full border border-[#ccff00]/30 bg-black/70 px-3 py-1 text-xs font-bold uppercase text-[#ccff00]"
+                      >
+                        {muscle}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  <h3 className="mb-2 text-2xl font-black uppercase tracking-wide">
+                    {workout.name}
+                  </h3>
+
+                  <p className="mb-5 text-sm text-slate-400">
+                    {workout.equipment}
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-5 text-sm text-slate-400">
+                    <span className="flex items-center gap-2">
+                      <Clock size={17} className="text-[#ccff00]" />
+                      {workout.duration} min
+                    </span>
+
+                    <span className="flex items-center gap-2">
+                      <Flame size={17} className="text-[#ccff00]" />
+                      {workout.caloriesBurned} kcal
+                    </span>
+
+                    <span className="flex items-center gap-2">
+                      <Star
+                        size={17}
+                        className="fill-[#ccff00] text-[#ccff00]"
+                      />
+                      {workout.rating}
+                    </span>
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-between">
+                    <span className="text-sm font-bold text-[#ccff00]">
+                      VIEW WORKOUT
+                    </span>
+
+                    <span className="text-xl text-[#ccff00] transition group-hover:translate-x-1">
+                      →
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* FOOTER */}
+      <footer className="mx-auto mt-12 max-w-7xl border-t border-white/10 px-6 py-10 text-center">
+        <p className="text-slate-400">
+          © 2026 FitLog — Workout Library. Train hard, log honest.
+        </p>
+      </footer>
+    </main>
   );
 }
