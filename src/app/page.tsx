@@ -1,4 +1,4 @@
-
+ 
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -39,23 +39,30 @@ export default function Home() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("duration");
+  const [retryCount, setRetryCount] = useState(0);
 
+  // Fetch real workout data from the API
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchWorkouts() {
       try {
         setLoading(true);
         setError("");
 
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL, {
+          cache: "no-store",
+        });
 
         if (!response.ok) {
-          throw new Error("Failed to load workouts");
+          throw new Error(
+            `Failed to load workouts. Status: ${response.status}`
+          );
         }
 
         const result = await response.json();
 
-        // Supports API responses that return an array
-        // or an object containing the workouts array.
+        // Support common API response formats
         const workoutList = Array.isArray(result)
           ? result
           : Array.isArray(result.data)
@@ -64,25 +71,46 @@ export default function Home() {
           ? result.workouts
           : [];
 
-        setWorkouts(workoutList);
+        if (!Array.isArray(workoutList)) {
+          throw new Error("Invalid workout API response");
+        }
+
+        if (isMounted) {
+          setWorkouts(workoutList);
+        }
       } catch (err) {
         console.error("Workout API error:", err);
-        setError("Unable to load workouts. Please try again.");
+
+        if (isMounted) {
+          setError(
+            "Unable to load workouts. Please check your connection and try again."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     fetchWorkouts();
-  }, []);
 
+    return () => {
+      isMounted = false;
+    };
+  }, [retryCount]);
+
+  // Search and sort workouts
   const filteredWorkouts = useMemo(() => {
     const keyword = search.toLowerCase().trim();
 
     const filtered = workouts.filter((workout) => {
       const name = workout.name?.toLowerCase() || "";
       const equipment = workout.equipment?.toLowerCase() || "";
-      const muscles = workout.muscleGroups?.join(" ").toLowerCase() || "";
+
+      const muscles = Array.isArray(workout.muscleGroups)
+        ? workout.muscleGroups.join(" ").toLowerCase()
+        : "";
 
       return (
         name.includes(keyword) ||
@@ -93,21 +121,27 @@ export default function Home() {
 
     return [...filtered].sort((a, b) => {
       if (sortBy === "calories") {
-        return b.caloriesBurned - a.caloriesBurned;
+        return (b.caloriesBurned || 0) - (a.caloriesBurned || 0);
       }
 
       if (sortBy === "rating") {
-        return b.rating - a.rating;
+        return (b.rating || 0) - (a.rating || 0);
       }
 
-      return a.duration - b.duration;
+      return (a.duration || 0) - (b.duration || 0);
     });
   }, [workouts, search, sortBy]);
 
+  // Scroll to the workout library
   function scrollToLibrary() {
     document.getElementById("library")?.scrollIntoView({
       behavior: "smooth",
     });
+  }
+
+  // Retry API request
+  function handleRetry() {
+    setRetryCount((previous) => previous + 1);
   }
 
   return (
@@ -176,6 +210,7 @@ export default function Home() {
             </p>
           </div>
 
+          {/* SEARCH AND SORT */}
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#15151e] px-4 py-3">
               <Search size={18} className="text-slate-400" />
@@ -190,7 +225,10 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#15151e] px-4 py-3">
-              <SlidersHorizontal size={18} className="text-[#ccff00]" />
+              <SlidersHorizontal
+                size={18}
+                className="text-[#ccff00]"
+              />
 
               <select
                 value={sortBy}
@@ -200,9 +238,11 @@ export default function Home() {
                 <option value="duration" className="bg-[#15151e]">
                   Duration
                 </option>
+
                 <option value="calories" className="bg-[#15151e]">
                   Calories
                 </option>
+
                 <option value="rating" className="bg-[#15151e]">
                   Rating
                 </option>
@@ -219,7 +259,9 @@ export default function Home() {
               size={48}
             />
 
-            <p className="text-slate-400">Loading workouts...</p>
+            <p className="text-slate-400">
+              Loading workouts...
+            </p>
           </div>
         )}
 
@@ -229,15 +271,15 @@ export default function Home() {
             <p className="mb-4 text-red-400">{error}</p>
 
             <button
-              onClick={() => window.location.reload()}
-              className="rounded-lg bg-[#ccff00] px-6 py-3 font-bold text-black"
+              onClick={handleRetry}
+              className="rounded-lg bg-[#ccff00] px-6 py-3 font-bold text-black transition hover:bg-lime-300"
             >
               Try Again
             </button>
           </div>
         )}
 
-        {/* EMPTY */}
+        {/* EMPTY SEARCH RESULTS */}
         {!loading && !error && filteredWorkouts.length === 0 && (
           <div className="rounded-2xl border border-white/10 bg-[#15151e] p-12 text-center">
             <Dumbbell
@@ -264,6 +306,7 @@ export default function Home() {
                 href={`/workout/${workout.id}`}
                 className="group overflow-hidden rounded-2xl border border-white/10 bg-[#15151e] transition duration-300 hover:-translate-y-1 hover:border-[#ccff00]/50"
               >
+                {/* Workout Image */}
                 <div className="relative h-64 overflow-hidden bg-[#20202a]">
                   <img
                     src={workout.image}
@@ -283,6 +326,7 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Workout Information */}
                 <div className="p-6">
                   <h3 className="mb-2 text-2xl font-black uppercase tracking-wide">
                     {workout.name}
@@ -294,12 +338,18 @@ export default function Home() {
 
                   <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-5 text-sm text-slate-400">
                     <span className="flex items-center gap-2">
-                      <Clock size={17} className="text-[#ccff00]" />
+                      <Clock
+                        size={17}
+                        className="text-[#ccff00]"
+                      />
                       {workout.duration} min
                     </span>
 
                     <span className="flex items-center gap-2">
-                      <Flame size={17} className="text-[#ccff00]" />
+                      <Flame
+                        size={17}
+                        className="text-[#ccff00]"
+                      />
                       {workout.caloriesBurned} kcal
                     </span>
 
