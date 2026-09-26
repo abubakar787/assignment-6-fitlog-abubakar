@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: "Train with intent. Log every set.",
 };
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-[#0c0d12]">
         <NavBar />
+        
         {children}
         <Toaster position="top-right" />
       </body>
