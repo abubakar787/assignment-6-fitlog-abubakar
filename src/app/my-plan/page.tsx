@@ -245,8 +245,7 @@ export default function MyPlanPage() {
                 key={workout.id}
                 className="flex flex-col gap-5 rounded-2xl border border-white/10 bg-[#15161d] p-4 transition hover:border-[#ccff00]/40 sm:flex-row sm:items-center sm:p-5"
               >
-                <img
-                  src={workout.image}
+                <img src={workout.image}
                   alt={workout.name}
                   className="h-48 w-full rounded-xl object-cover sm:h-28 sm:w-36"
                 />
